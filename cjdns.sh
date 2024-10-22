@@ -33,7 +33,7 @@ need() {
 }
 dlod() {
     if command -v wget >/dev/null ; then
-        wget -Qo - "$1"        
+        wget -o - "$1"        
     elif command -v curl >/dev/null ; then
         curl "$1"
     else
