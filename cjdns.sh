@@ -33,7 +33,7 @@ need() {
 }
 dlod() {
     if command -v wget >/dev/null ; then
-        wget -o - "$1"        
+        wget -qO - "$1"        
     elif command -v curl >/dev/null ; then
         curl "$1"
     else
@@ -84,7 +84,6 @@ do_manifest() {
 
 update() {
     libc=$1
-    # raw.githubusercontent.com/cjdelisle/cjdns.sh/refs/heads/main
     do_manifest "https://pkt.cash/special/cjdns"
     do_manifest "https://pkt.cash/special/cjdns/binaries/$(uname -s)-$(uname -m)-$libc"
     if ! [ -e "/etc/cjdns.sh.env" ] ; then
