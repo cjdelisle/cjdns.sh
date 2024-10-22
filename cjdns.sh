@@ -9,6 +9,7 @@ fi
 : "${CJDNS_CONF_PATH:=/etc/cjdroute_${CJDNS_PORT}.conf}"
 : "${CJDNS_SOCKET:=cjdroute_${CJDNS_PORT}.sock}"
 : "${CJDNS_TUN:=false}"
+: "${CJDNS_PEERID:=PUB_NotYielding}"
 if [ -z "$CJDNS_ADMIN_PORT" ]; then
     CJDNS_ADMIN_PORT=$((CJDNS_PORT + 1))
 fi
@@ -20,6 +21,7 @@ cjdns_sh_env() {
     echo ": \"\${CJDNS_CONF_PATH:=$CJDNS_CONF_PATH}\""
     echo ": \"\${CJDNS_SOCKET:=$CJDNS_SOCKET}\""
     echo ": \"\${CJDNS_TUN:=$CJDNS_TUN}\""
+    echo ": \"\${CJDNS_PEERID:=$CJDNS_PEERID}\""
 }
 
 die() {
@@ -42,6 +44,7 @@ dlod() {
 }
 
 check() {
+    echo "Checking required tools are present"
     need uname
     need tar
     need sha256sum
@@ -49,6 +52,7 @@ check() {
     need chmod
     need grep
     need jq
+    need ldd
 
     if command -v wget >/dev/null ; then
         true
@@ -84,6 +88,7 @@ do_manifest() {
 
 update() {
     libc=$1
+    echo "Downloading / updating cjdns"
     do_manifest "https://pkt.cash/special/cjdns"
     do_manifest "https://pkt.cash/special/cjdns/binaries/$(uname -s)-$(uname -m)-$libc"
     if ! [ -e "/etc/cjdns.sh.env" ] ; then
@@ -92,6 +97,7 @@ update() {
 }
 
 mk_conf() {
+    echo "Updating cjdns conf file: $CJDNS_CONF_PATH"
     if ! [ -e "$CJDNS_CONF_PATH" ] ; then
         cjdroute --genconf > "$CJDNS_CONF_PATH" || die "Unable to launch cjdns"
     fi
@@ -106,7 +112,7 @@ update_conf() {
         (.interfaces.UDPInterface[0].bind) |= \"0.0.0.0:$CJDNS_PORT\" | \
         (.interfaces.UDPInterface[1].bind) |= \"[::]:$CJDNS_PORT\" | \
         (.admin.bind) |= \"127.0.0.1:$CJDNS_ADMIN_PORT\" | \
-        (.router.publicPeer) |= \"$USER_CODE\" | \
+        (.router.publicPeer) |= \"$CJDNS_PEERID\" | \
         (.pipe) |= \"$CJDNS_SOCKET\" | \
         (.noBackground) |= 1 | \
         $tun_iface" > "$CJDNS_CONF_PATH.upd"
@@ -114,6 +120,7 @@ update_conf() {
 }
 
 install_launcher_systemd() {
+    echo "Installing systemd launcher /usr/lib/systemd/system/cjdns-sh.service"
     need systemctl
         echo '
 [Unit]
@@ -135,9 +142,11 @@ WantedBy=multi-user.target
 ' > "/usr/lib/systemd/system/cjdns-sh.service"
     systemctl enable cjdns-sh.service
     systemctl start cjdns-sh.service
+    systemctl status cjdns-sh.service
 }
 
 install_launcher_openrc() {
+    echo "Installing openrc launcher /etc/init.d/cjdns-sh"
     echo '
 #!/sbin/openrc-run
 
@@ -178,18 +187,35 @@ stop() {
     supervise-daemon --stop cjdns --pidfile "$pidfile"
     eend $?
 }
-' > /etc/init.d/cjdns
-    chmod a+x /etc/init.d/cjdns
-    rc-update add cjdns default
-    rc-service cjdns start
+' > /etc/init.d/cjdns-sh
+    chmod a+x /etc/init.d/cjdns-sh
+    rc-update add cjdns-sh default
+    rc-service cjdns-sh start
+    rc-service crond-sh status
 }
 
 install_launcher() {
     if [ -e /usr/lib/systemd/system ] ; then
         install_launcher_systemd
+        restart_cmd='systemctl restart cjdns-sh.service'
+        stop_cmd='systemctl disable cjdns-sh.service'
     elif command -v rc-service >/dev/null 2>/dev/null ; then
         install_launcher_openrc
+        restart_cmd='rc-service cjdns-sh restart'
+        stop_cmd='rc-update del cjdns-sh default'
+    else
+        die "Only supported on systems with openrc or systemd"
     fi
+    echo "Cjdns should be running with admin port $CJDNS_ADMIN_PORT"
+    echo "You can control it using 'cjdnstool -p $CJDNS_ADMIN_PORT'"
+    echo "For example, to get the list of your peers, use cjdnstool -p $CJDNS_ADMIN_PORT peers show'"
+    echo "As follows:"
+    /usr/local/bin/cjdnstool -p "$CJDNS_ADMIN_PORT" peers show
+    echo "Your cjdns public UDP port is $CJDNS_PORT, and Peer ID is $CJDNS_PEERID"
+    echo "This port MUST be open to the outside world in order to yield, check your firewall / NAT"
+    echo "This script will update every restart. You can use $restart_cmd to restart it."
+    echo "To stop cjdns from restarting, you can use: $stop_cmd"
+    echo "You may run this script any time, and in case of cjdns installation issues, your installation will be fixed."
 }
 
 main() {
@@ -201,6 +227,13 @@ main() {
         libc="MUSL"
     else
         die "Only glibc or musl libc are supported"
+    fi
+    if [ -e /usr/lib/systemd/system ] ; then
+        true
+    elif command -v rc-service >/dev/null 2>/dev/null ; then
+        true
+    else
+        die "Only supported on systems with openrc or systemd"
     fi
 
     update "$libc"
