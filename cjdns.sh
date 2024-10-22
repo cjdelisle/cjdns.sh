@@ -99,7 +99,7 @@ update() {
 mk_conf() {
     echo "Updating cjdns conf file: $CJDNS_CONF_PATH"
     if ! [ -e "$CJDNS_CONF_PATH" ] ; then
-        cjdroute --genconf > "$CJDNS_CONF_PATH" || die "Unable to launch cjdns"
+        "${CJDNS_PATH}/cjdroute" --genconf > "$CJDNS_CONF_PATH" || die "Unable to launch cjdns"
     fi
 }
 
@@ -108,7 +108,7 @@ update_conf() {
     if ! [ "$CJDNS_TUN" = "false" ] ; then
         tun_iface='(.router.interface) |= {"type":"TUNInterface"}'
     fi
-    cjdroute --cleanconf < "$CJDNS_CONF_PATH" | jq "\
+    "${CJDNS_PATH}/cjdroute" --cleanconf < "$CJDNS_CONF_PATH" | jq "\
         (.interfaces.UDPInterface[0].bind) |= \"0.0.0.0:$CJDNS_PORT\" | \
         (.interfaces.UDPInterface[1].bind) |= \"[::]:$CJDNS_PORT\" | \
         (.admin.bind) |= \"127.0.0.1:$CJDNS_ADMIN_PORT\" | \
@@ -212,7 +212,7 @@ install_launcher() {
     echo "You can control it using 'cjdnstool -p $CJDNS_ADMIN_PORT'"
     echo "For example, to get the list of your peers, use cjdnstool -p $CJDNS_ADMIN_PORT peers show'"
     echo "As follows:"
-    /usr/local/bin/cjdnstool -p "$CJDNS_ADMIN_PORT" peers show
+    "${CJDNS_PATH}/cjdnstool" -p "$CJDNS_ADMIN_PORT" peers show
     echo "Your cjdns public UDP port is $CJDNS_PORT, and Peer ID is $CJDNS_PEERID"
     echo "This port MUST be open to the outside world in order to yield, check your firewall / NAT"
     echo "This script will update every restart. You can use $restart_cmd to restart it."
@@ -228,7 +228,7 @@ main() {
     elif ldd /bin/sh | grep -q 'musl'; then
         libc="MUSL"
     else
-        die "Only glibc or musl libc are supported"
+        die "Only supported on systems with glibc or musl-libc"
     fi
     if [ -e /etc/systemd/system ] ; then
         true
@@ -244,7 +244,7 @@ main() {
 
     for arg in "$@"; do
         if [ "$arg" = "exec" ]; then
-            exec cjdroute < "$CJDNS_CONF_PATH"
+            exec "${CJDNS_PATH}/cjdroute" < "$CJDNS_CONF_PATH"
             exit 100
         fi
     done
