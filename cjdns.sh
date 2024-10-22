@@ -6,10 +6,12 @@ fi
 
 : "${CJDNS_PATH:=/usr/local/bin}"
 : "${CJDNS_PORT:=3478}"
-: "${CJDNS_ADMIN_PORT:="$(("$CJDNS_PORT" + 1))"}"
 : "${CJDNS_CONF_PATH:=/etc/cjdroute_${CJDNS_PORT}.conf}"
 : "${CJDNS_SOCKET:=cjdroute_${CJDNS_PORT}.sock}"
 : "${CJDNS_TUN:=false}"
+if [ -z "$CJDNS_ADMIN_PORT" ]; then
+    CJDNS_ADMIN_PORT=$((CJDNS_PORT + 1))
+fi
 
 cjdns_sh_env() {
     echo "#!/bin/sh"
@@ -104,6 +106,7 @@ update_conf() {
     cjdroute --cleanconf < "$CJDNS_CONF_PATH" | jq "\
         (.interfaces.UDPInterface[0].bind) |= \"0.0.0.0:$CJDNS_PORT\" | \
         (.interfaces.UDPInterface[1].bind) |= \"[::]:$CJDNS_PORT\" | \
+        (.admin.bind) |= \"127.0.0.1:$CJDNS_ADMIN_PORT\" | \
         (.router.publicPeer) |= \"$USER_CODE\" | \
         (.pipe) |= \"$CJDNS_SOCKET\" | \
         (.noBackground) |= 1 | \
