@@ -22,6 +22,9 @@ cjdns_sh_env() {
     echo ": \"\${CJDNS_SOCKET:=$CJDNS_SOCKET}\""
     echo ": \"\${CJDNS_TUN:=$CJDNS_TUN}\""
     echo ": \"\${CJDNS_PEERID:=$CJDNS_PEERID}\""
+    echo "if [ -z \"\$CJDNS_ADMIN_PORT\" ]; then"
+    echo "  CJDNS_ADMIN_PORT=\"$CJDNS_ADMIN_PORT\""
+    echo "fi"
 }
 
 die() {
@@ -91,9 +94,6 @@ update() {
     echo "Downloading / updating cjdns"
     do_manifest "https://pkt.cash/special/cjdns"
     do_manifest "https://pkt.cash/special/cjdns/binaries/$(uname -s)-$(uname -m)-$libc"
-    if ! [ -e "/etc/cjdns.sh.env" ] ; then
-        cjdns_sh_env > "/etc/cjdns.sh.env"
-    fi
 }
 
 mk_conf() {
@@ -120,7 +120,7 @@ update_conf() {
 }
 
 install_launcher_systemd() {
-    echo "Installing systemd launcher /usr/lib/systemd/system/cjdns-sh.service"
+    echo "Installing systemd launcher /etc/systemd/system/cjdns-sh.service"
     need systemctl
         echo '
 [Unit]
@@ -139,7 +139,7 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-' > "/usr/lib/systemd/system/cjdns-sh.service"
+' > "/etc/systemd/system/cjdns-sh.service"
     systemctl enable cjdns-sh.service
     systemctl start cjdns-sh.service
     systemctl status cjdns-sh.service
@@ -195,7 +195,7 @@ stop() {
 }
 
 install_launcher() {
-    if [ -e /usr/lib/systemd/system ] ; then
+    if [ -e /etc/systemd/system ] ; then
         install_launcher_systemd
         restart_cmd='systemctl restart cjdns-sh.service'
         stop_cmd='systemctl disable cjdns-sh.service'
@@ -206,6 +206,8 @@ install_launcher() {
     else
         die "Only supported on systems with openrc or systemd"
     fi
+    # Persist our env vars
+    cjdns_sh_env > "/etc/cjdns.sh.env"
     echo "Cjdns should be running with admin port $CJDNS_ADMIN_PORT"
     echo "You can control it using 'cjdnstool -p $CJDNS_ADMIN_PORT'"
     echo "For example, to get the list of your peers, use cjdnstool -p $CJDNS_ADMIN_PORT peers show'"
@@ -228,7 +230,7 @@ main() {
     else
         die "Only glibc or musl libc are supported"
     fi
-    if [ -e /usr/lib/systemd/system ] ; then
+    if [ -e /etc/systemd/system ] ; then
         true
     elif command -v rc-service >/dev/null 2>/dev/null ; then
         true
