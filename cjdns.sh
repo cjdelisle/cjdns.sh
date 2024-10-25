@@ -9,6 +9,7 @@ fi
 : "${CJDNS_CONF_PATH:=/etc/cjdroute_${CJDNS_PORT}.conf}"
 : "${CJDNS_SOCKET:=cjdroute_${CJDNS_PORT}.sock}"
 : "${CJDNS_TUN:=false}"
+: "${CJDNS_IPV6:=true}"
 : "${CJDNS_PEERID:=PUB_NotYielding}"
 if [ -z "$CJDNS_ADMIN_PORT" ]; then
     CJDNS_ADMIN_PORT=$((CJDNS_PORT + 1))
@@ -22,6 +23,7 @@ cjdns_sh_env() {
     echo ": \"\${CJDNS_SOCKET:=$CJDNS_SOCKET}\""
     echo ": \"\${CJDNS_TUN:=$CJDNS_TUN}\""
     echo ": \"\${CJDNS_PEERID:=$CJDNS_PEERID}\""
+    echo ": \"\${CJDNS_IPV6:=$CJDNS_IPV6}\""
     echo "if [ -z \"\$CJDNS_ADMIN_PORT\" ]; then"
     echo "  CJDNS_ADMIN_PORT=\"$CJDNS_ADMIN_PORT\""
     echo "fi"
@@ -108,9 +110,14 @@ update_conf() {
     if ! [ "$CJDNS_TUN" = "false" ] ; then
         tun_iface='(.router.interface) |= {"type":"TUNInterface"}'
     fi
+    if [ "$CJDNS_IPV6" = "true" ] ; then
+        ipv6="(.interfaces.UDPInterface[1]) |= { \"bind\":\"[::]:$CJDNS_PORT\" }"
+    else
+        ipv6="del(.interfaces.UDPInterface[1])"
+    fi
     "${CJDNS_PATH}/cjdroute" --cleanconf < "$CJDNS_CONF_PATH" | jq "\
         (.interfaces.UDPInterface[0].bind) |= \"0.0.0.0:$CJDNS_PORT\" | \
-        (.interfaces.UDPInterface[1].bind) |= \"[::]:$CJDNS_PORT\" | \
+        $ipv6 | \
         (.admin.bind) |= \"127.0.0.1:$CJDNS_ADMIN_PORT\" | \
         (.router.publicPeer) |= \"$CJDNS_PEERID\" | \
         (.pipe) |= \"$CJDNS_SOCKET\" | \
