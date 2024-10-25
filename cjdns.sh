@@ -11,6 +11,7 @@ fi
 : "${CJDNS_TUN:=false}"
 : "${CJDNS_IPV6:=true}"
 : "${CJDNS_PEERID:=PUB_NotYielding}"
+: "${CJDNS_SETUSER:=nobody}"
 if [ -z "$CJDNS_ADMIN_PORT" ]; then
     CJDNS_ADMIN_PORT=$((CJDNS_PORT + 1))
 fi
@@ -24,6 +25,7 @@ cjdns_sh_env() {
     echo ": \"\${CJDNS_TUN:=$CJDNS_TUN}\""
     echo ": \"\${CJDNS_PEERID:=$CJDNS_PEERID}\""
     echo ": \"\${CJDNS_IPV6:=$CJDNS_IPV6}\""
+    echo ": \"\${CJDNS_SETUSER:=$CJDNS_SETUSER}\""
     echo "if [ -z \"\$CJDNS_ADMIN_PORT\" ]; then"
     echo "  CJDNS_ADMIN_PORT=\"$CJDNS_ADMIN_PORT\""
     echo "fi"
@@ -100,7 +102,7 @@ update() {
 
 mk_conf() {
     echo "Updating cjdns conf file: $CJDNS_CONF_PATH"
-    if ! [ -e "$CJDNS_CONF_PATH" ] ; then
+    if ! [ -s "$CJDNS_CONF_PATH" ] ; then
         "${CJDNS_PATH}/cjdroute" --genconf > "$CJDNS_CONF_PATH" || die "Unable to launch cjdns"
     fi
 }
@@ -115,6 +117,11 @@ update_conf() {
     else
         ipv6="del(.interfaces.UDPInterface[1])"
     fi
+    if echo "$CJDNS_SETUSER" | grep -q '^[0-9]\+$' ; then
+        user="$CJDNS_SETUSER"
+    else
+        user="\"$CJDNS_SETUSER\""
+    fi
     "${CJDNS_PATH}/cjdroute" --cleanconf < "$CJDNS_CONF_PATH" | jq "\
         (.interfaces.UDPInterface[0].bind) |= \"0.0.0.0:$CJDNS_PORT\" | \
         $ipv6 | \
@@ -122,8 +129,19 @@ update_conf() {
         (.router.publicPeer) |= \"$CJDNS_PEERID\" | \
         (.pipe) |= \"$CJDNS_SOCKET\" | \
         (.noBackground) |= 1 | \
+        (.security) |= map( \
+            if has(\"setuser\") then \
+                { \"keepNetAdmin\": 1, \"setuser\": $user } \
+            else \
+                . \
+            end \
+        ) | \
         $tun_iface" > "$CJDNS_CONF_PATH.upd"
-    mv "$CJDNS_CONF_PATH.upd" "$CJDNS_CONF_PATH"
+    if ! [ -s "$CJDNS_CONF_PATH.upd" ] ; then
+        die "Updating file yielded no/empty result, not saving"
+    else
+        mv "$CJDNS_CONF_PATH.upd" "$CJDNS_CONF_PATH"
+    fi
 }
 
 install_launcher_systemd() {
