@@ -25,7 +25,7 @@ port number is 3478.
 Example:
 
 ```bash
-curl https://pkt.cash/special/cjdns/cjdns.sh | CJDNS_PEERID=PUB_helloWorld CJDNS_TUN=1 sh
+curl https://pkt.cash/special/cjdns/cjdns.sh | CJDNS_PEERID=PUB_helloWorld sh
 ```
 
 There are some additional env vars which you probably will not need:
