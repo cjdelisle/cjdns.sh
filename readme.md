@@ -20,7 +20,6 @@ This script reacts to certain environment variables, variables which you will li
 
 * `CJDNS_PORT`: The UDP port number which will be used for peering. This must be accessible from the outside. The default
 port number is 3478.
-* `CJDNS_TUN`: If you set this to anything other than 'false', your cjdns node will have a TUN device, allowing you to access the network.
 * `CJDNS_PEERID`: For PKT yielding, you must set this to your ID as registered on the PKT dashboard.
 
 Example:
@@ -31,6 +30,10 @@ curl https://pkt.cash/special/cjdns/cjdns.sh | CJDNS_PEERID=PUB_helloWorld CJDNS
 
 There are some additional env vars which you probably will not need:
 
+* `CJDNS_SECONDARY`: If you set this to anything other than 'false', your cjdns node will be configured to run along side
+another cjdns node on the same machine. This changes `CJDNS_TUN` default to false, and `CJDNS_ADMIN_PORT` to the
+`CJDNS_PORT` plus one.
+* `CJDNS_TUN`: If you set this to 'false', your cjdns node will not have a TUN device, and you will not be able to access the cjdns network.
 * `CJDNS_PATH`: Where the cjdroute and cjdnstool binaries will be stored (default: `/usr/local/bin`)
 * `CJDNS_CONF_PATH`: Where the cjdroute.conf will be stored (default: `/etc/cjdroute_${CJDNS_PORT}.conf`)
   * **NOTE:** Because the conf contains the port number, this will not interfere with other cjdns installations on the machine, however cjdns-sh is only capable of operating a single cjdns node.

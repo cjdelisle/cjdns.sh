@@ -8,12 +8,23 @@ fi
 : "${CJDNS_PORT:=3478}"
 : "${CJDNS_CONF_PATH:=/etc/cjdroute_${CJDNS_PORT}.conf}"
 : "${CJDNS_SOCKET:=cjdroute_${CJDNS_PORT}.sock}"
-: "${CJDNS_TUN:=false}"
 : "${CJDNS_IPV6:=true}"
 : "${CJDNS_PEERID:=PUB_NotYielding}"
 : "${CJDNS_SETUSER:=nobody}"
+: "${CJDNS_SECONDARY:=false}"
+if [ -z "$CJDNS_TUN" ]; then
+    if ! [ "$CJDNS_SECONDARY" = 'false' ]; then
+        CJDNS_TUN='false'
+    else
+        CJDNS_TUN='true'
+    fi
+fi
 if [ -z "$CJDNS_ADMIN_PORT" ]; then
-    CJDNS_ADMIN_PORT=$((CJDNS_PORT + 1))
+    if ! [ "$CJDNS_SECONDARY" = 'false' ]; then
+        CJDNS_ADMIN_PORT=$((CJDNS_PORT + 1))
+    else
+        CJDNS_ADMIN_PORT=11234
+    fi
 fi
 
 cjdns_sh_env() {
@@ -26,6 +37,7 @@ cjdns_sh_env() {
     echo ": \"\${CJDNS_PEERID:=$CJDNS_PEERID}\""
     echo ": \"\${CJDNS_IPV6:=$CJDNS_IPV6}\""
     echo ": \"\${CJDNS_SETUSER:=$CJDNS_SETUSER}\""
+    echo ": \"\${CJDNS_SECONDARY:=$CJDNS_SECONDARY}\""
     echo "if [ -z \"\$CJDNS_ADMIN_PORT\" ]; then"
     echo "  CJDNS_ADMIN_PORT=\"$CJDNS_ADMIN_PORT\""
     echo "fi"
@@ -220,7 +232,7 @@ stop() {
 }
 
 install_launcher() {
-    if [ -e /etc/systemd/system ] ; then
+    if [ -d /run/systemd/system ] ; then
         install_launcher_systemd
         restart_cmd='systemctl restart cjdns-sh.service'
         stop_cmd='systemctl disable cjdns-sh.service'
@@ -231,13 +243,21 @@ install_launcher() {
     else
         die "Only supported on systems with openrc or systemd"
     fi
+    if [ "$CJDNS_ADMIN_PORT" = '11234' ] ; then
+        cjdnstool_cmd='cjdnstool'
+    else
+        cjdnstool_cmd="cjdnstool -p $CJDNS_ADMIN_PORT"
+    fi
     # Persist our env vars
     cjdns_sh_env > "/etc/cjdns.sh.env"
     echo "Cjdns should be running with admin port $CJDNS_ADMIN_PORT"
-    echo "You can control it using 'cjdnstool -p $CJDNS_ADMIN_PORT'"
-    echo "For example, to get the list of your peers, use cjdnstool -p $CJDNS_ADMIN_PORT peers show'"
+    echo "You can control it using '$cjdnstool_cmd'"
+    echo "For example, to get the list of your peers, use $cjdnstool_cmd peers show'"
     echo "As follows:"
+    echo
+    echo "$ $cjdnstool_cmd peers show"
     "${CJDNS_PATH}/cjdnstool" -p "$CJDNS_ADMIN_PORT" peers show
+    echo
     echo "Your cjdns public UDP port is $CJDNS_PORT, and Peer ID is $CJDNS_PEERID"
     echo "This port MUST be open to the outside world in order to yield, check your firewall / NAT"
     echo "This script will update every restart. You can use $restart_cmd to restart it."
@@ -255,7 +275,7 @@ main() {
     else
         die "Only supported on systems with glibc or musl-libc"
     fi
-    if [ -e /etc/systemd/system ] ; then
+    if [ -d /run/systemd/system ] ; then
         true
     elif command -v rc-service >/dev/null 2>/dev/null ; then
         true
