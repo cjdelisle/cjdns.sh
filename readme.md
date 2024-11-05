@@ -40,6 +40,13 @@ another cjdns node on the same machine. This changes `CJDNS_TUN` default to fals
 * `CJDNS_SOCKET`: The name of the admin socket file (default: `cjdroute_${CJDNS_PORT}.sock`)
 * `CJDNS_ADMIN_PORT`: The number of the cjdns admin port (default: `CJDNS_PORT + 1`)
   * **NOTE:** If you set this to 11234 then you can use cjdnstool without specifying the port.
+* `CJDNS_IPV4`: Most of the time, cjdns is able to detect your public IP address on it's own, but in some cases
+such as with advanced NAT configurations, you may need to manually configure your public address.
+With the `CJDNS_IPV4` environment variable, you can manually set the IP only (`x.x.x.x`) or the port only
+(`0.0.0.0:xxx`) or both the IP and port (`x.x.x.x:xxx`). Whichever part is not manually configured will be
+automatically detected.
+* `CJDNS_IPV6`: Like your IPv4 address, you can configure an IPv6 address. For address only, use `xxxx:xxxx::`,
+for port only, use `[::]:xxx` and for IP+Port, use `[xxxx:xxxx::]:xxx`.
 
 ## How it works
 When systemd/openrc launches cjdns, it runs `cjdns.sh`, causing it to check itself and update if necessary.
