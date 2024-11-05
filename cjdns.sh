@@ -136,19 +136,19 @@ update_conf() {
     else
         user="\"$CJDNS_SETUSER\""
     fi
-    ipv4=""
-    ipv6=""
+    ext_ipv4=""
+    ext_ipv6=""
     if ! [ "$CJDNS_IPV4" = "false" ] ; then
-        ipv4=", \"ipv4\": \"$CJDNS_IPV4\""
+        ext_ipv4=", \"ipv4\": \"$CJDNS_IPV4\""
     fi
     if ! [ "$CJDNS_IPV6" = "false" ] ; then
-        ipv6=", \"ipv6\": \"$CJDNS_IPV6\""
+        ext_ipv6=", \"ipv6\": \"$CJDNS_IPV6\""
     fi
     "${CJDNS_PATH}/cjdroute" --cleanconf < "$CJDNS_CONF_PATH" | jq "\
         (.interfaces.UDPInterface[0].bind) |= \"0.0.0.0:$CJDNS_PORT\" | \
         $ipv6 | \
         (.admin.bind) |= \"127.0.0.1:$CJDNS_ADMIN_PORT\" | \
-        (.router.publicPeer) |= { \"id\": \"$CJDNS_PEERID\" $ipv4 $ipv6 } | \
+        (.router.publicPeer) |= { \"id\": \"$CJDNS_PEERID\" $ext_ipv4 $ext_ipv6 } | \
         (.pipe) |= \"$CJDNS_SOCKET\" | \
         (.noBackground) |= 1 | \
         (.security) |= map( \
