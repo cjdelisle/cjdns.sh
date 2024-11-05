@@ -40,9 +40,9 @@ cjdns_sh_env() {
     echo ": \"\${CJDNS_IPV6:=$CJDNS_IPV6}\""
     echo ": \"\${CJDNS_SETUSER:=$CJDNS_SETUSER}\""
     echo ": \"\${CJDNS_SECONDARY:=$CJDNS_SECONDARY}\""
-    echo ": \"\$CJDNS_ADMIN_PORT:=$CJDNS_ADMIN_PORT}\""
-    echo ": \"\$CJDNS_IPV4:=$CJDNS_IPV4}\""
-    echo ": \"\$CJDNS_IPV6:=$CJDNS_IPV6}\""
+    echo ": \"\${CJDNS_ADMIN_PORT:=$CJDNS_ADMIN_PORT}\""
+    echo ": \"\${CJDNS_IPV4:=$CJDNS_IPV4}\""
+    echo ": \"\${CJDNS_IPV6:=$CJDNS_IPV6}\""
 }
 
 die() {
@@ -260,6 +260,14 @@ install_launcher() {
     fi
     # Persist our env vars
     cjdns_sh_env > "/etc/cjdns.sh.env"
+    for i in 1 2 3 4 5 6 7 8 9 10 ; do
+        echo $i
+        if "${CJDNS_PATH}/cjdnstool" -p "$CJDNS_ADMIN_PORT" peers show 2>/dev/null >/dev/null ; then
+            break;
+        fi
+        echo "Waiting for cjdns to start up [$i]..."
+        sleep 1
+    done
     echo "Cjdns should be running with admin port $CJDNS_ADMIN_PORT"
     echo "You can control it using '$cjdnstool_cmd'"
     echo "For example, to get the list of your peers, use $cjdnstool_cmd peers show'"
