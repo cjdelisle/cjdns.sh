@@ -293,7 +293,16 @@ main() {
     else
         libc="STATIC"
     fi
-    if [ -d /run/systemd/system ] ; then
+    do_exec='false'
+    for arg in "$@"; do
+        if [ "$arg" = "exec" ]; then
+            do_exec='true'
+        fi
+    done
+
+    if [ "$do_exec" = 'true' ] ; then
+        true
+    elif [ -d /run/systemd/system ] ; then
         true
     elif command -v rc-service >/dev/null 2>/dev/null ; then
         true
@@ -305,12 +314,10 @@ main() {
     mk_conf
     update_conf
 
-    for arg in "$@"; do
-        if [ "$arg" = "exec" ]; then
-            exec "${CJDNS_PATH}/cjdroute" < "$CJDNS_CONF_PATH"
-            exit 100
-        fi
-    done
+    if [ "$do_exec" = 'true' ] ; then
+        exec "${CJDNS_PATH}/cjdroute" < "$CJDNS_CONF_PATH"
+        exit 100
+    fi
 
     # We check and install the launcher only if we're not being launched from it
     install_launcher
