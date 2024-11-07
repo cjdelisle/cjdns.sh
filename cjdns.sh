@@ -8,7 +8,7 @@ fi
 : "${CJDNS_PORT:=3478}"
 : "${CJDNS_CONF_PATH:=/etc/cjdroute_${CJDNS_PORT}.conf}"
 : "${CJDNS_SOCKET:=cjdroute_${CJDNS_PORT}.sock}"
-: "${CJDNS_IPV6:=true}"
+: "${CJDNS_ENABLE_IPV6:=true}"
 : "${CJDNS_PEERID:=PUB_NotYielding}"
 : "${CJDNS_SETUSER:=nobody}"
 : "${CJDNS_SECONDARY:=false}"
@@ -37,7 +37,7 @@ cjdns_sh_env() {
     echo ": \"\${CJDNS_SOCKET:=$CJDNS_SOCKET}\""
     echo ": \"\${CJDNS_TUN:=$CJDNS_TUN}\""
     echo ": \"\${CJDNS_PEERID:=$CJDNS_PEERID}\""
-    echo ": \"\${CJDNS_IPV6:=$CJDNS_IPV6}\""
+    echo ": \"\${CJDNS_ENABLE_IPV6:=$CJDNS_ENABLE_IPV6}\""
     echo ": \"\${CJDNS_SETUSER:=$CJDNS_SETUSER}\""
     echo ": \"\${CJDNS_SECONDARY:=$CJDNS_SECONDARY}\""
     echo ": \"\${CJDNS_ADMIN_PORT:=$CJDNS_ADMIN_PORT}\""
@@ -126,7 +126,7 @@ update_conf() {
     if ! [ "$CJDNS_TUN" = "false" ] ; then
         tun_iface='(.router.interface) |= {"type":"TUNInterface"}'
     fi
-    if [ "$CJDNS_IPV6" = "true" ] ; then
+    if [ "$CJDNS_ENABLE_IPV6" = "true" ] ; then
         ipv6="(.interfaces.UDPInterface[1]) |= { \"bind\":\"[::]:$CJDNS_PORT\" }"
     else
         ipv6="del(.interfaces.UDPInterface[1])"
@@ -141,7 +141,8 @@ update_conf() {
     if ! [ "$CJDNS_IPV4" = "false" ] ; then
         ext_ipv4=", \"ipv4\": \"$CJDNS_IPV4\""
     fi
-    if ! [ "$CJDNS_IPV6" = "false" ] ; then
+    # Exclude CJDNS_IPV6=true because previously there was a collision.
+    if ! [ "$CJDNS_IPV6" = "false" ] && ! [ "$CJDNS_IPV6" = "true" ] ; then
         ext_ipv6=", \"ipv6\": \"$CJDNS_IPV6\""
     fi
     "${CJDNS_PATH}/cjdroute" --cleanconf < "$CJDNS_CONF_PATH" | jq "\
