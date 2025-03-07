@@ -286,14 +286,7 @@ install_launcher() {
 
 main() {
     check
-
-    if ldd /bin/sh | grep -q 'libc.so.6'; then
-        libc="GNU"
-#    elif ldd /bin/sh | grep -q 'musl'; then
-#        libc="MUSL"
-    else
-        libc="STATIC"
-    fi
+    libc="STATIC"
     do_exec='false'
     for arg in "$@"; do
         if [ "$arg" = "exec" ]; then
