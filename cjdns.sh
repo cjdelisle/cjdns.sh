@@ -195,46 +195,25 @@ WantedBy=multi-user.target
 
 install_launcher_openrc() {
     echo "Installing openrc launcher /etc/init.d/cjdns-sh"
-    echo '
-#!/sbin/openrc-run
+    echo '#!/sbin/openrc-run
 
 description="Automated cjdns installer and runner"
 
 command="/usr/local/bin/cjdns.sh"
 command_args="exec"
 command_user="root"  # Adjust the user as needed
+command_background=true
 
 depend() {
     need net
     before net
 }
 
-supervisor=supervise-daemon
 output_log="/var/log/cjdns.log"
 error_log="/var/log/cjdns.log"
 pidfile="/var/run/cjdns.pid"
 respawn_delay=5
 respawn_max=0  # Unlimited respawns, similar to `Restart=always` in systemd
-
-start_pre() {
-    ebegin "Starting cjdns service"
-}
-
-stop_pre() {
-    ebegin "Stopping cjdns service"
-}
-
-start() {
-    ebegin "Running cjdns.sh"
-    supervise-daemon --start cjdns --pidfile "$pidfile" --respawn --respawn-delay $respawn_delay --stdout "$output_log" --stderr "$error_log" -- "$command" "$command_args"
-    eend $?
-}
-
-stop() {
-    ebegin "Stopping cjdns"
-    supervise-daemon --stop cjdns --pidfile "$pidfile"
-    eend $?
-}
 ' > /etc/init.d/cjdns-sh
     chmod a+x /etc/init.d/cjdns-sh
     rc-update add cjdns-sh default
